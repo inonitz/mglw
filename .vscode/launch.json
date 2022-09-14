@@ -1,0 +1,29 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "g++ - Debug Executable",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/build/bin/Project",
+			"args": [],
+			"stopAtEntry": true,
+			"cwd": "${fileDirname}",
+			"environment": [],
+			"externalConsole": false,
+			"MIMode": "gdb",
+			"miDebuggerPath": "${workspaceFolder}\\..\\..\\..\\bin\\gdb.exe",
+			"setupCommands": [
+				{
+					"description": "Enable pretty-printing for gdb",
+					"text": "-enable-pretty-printing",
+					"ignoreFailures": false
+				}
+			],
+			"preLaunchTask": "Debug",
+			"logging": { "engineLogging": true }
+		}
+	]
+}
+
+// "C:\\Program Files\\Programming Utillities\\Cygwin\\bin\\gdb.exe",
