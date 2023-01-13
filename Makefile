@@ -1,171 +1,72 @@
-PROJNAME = Project
-TARGET   = $(PROJNAME)
-CPPC  	 = g++
-ASMC 	 = as
-ASMFLAGS = -O0
-CXXFLAGS =  -c \
-			-pedantic \
-			-Wall \
-			-Wextra \
-			-masm=intel \
-
-
-CVERSION   = c11
-CXXVERSION = c++17
+# WORKING_DIR_ABS_PATH=/cygdrive/c/"Program Files/Programming Utillities"/Cygwin/home/themc/mglw
+WORKING_DIR_ABS_PATH=$(shell pwd)
+SCRIPT_PATH=.vscode/clangd_cc
+SCRIPT_NAME=gen_commands.sh
+SCRIPT_FULL_ADDRESS=$(WORKING_DIR_ABS_PATH)/$(SCRIPT_PATH)/$(SCRIPT_NAME)
 
 
 
 
-# -pedantic \
-# -Werror \
-# -Wno-missing-braces \
-# -Wno-missing-field-initializers \
-# -Wno-unused-function \
-# -Wno-unused-variable \
-# -march=native \
-# -masm=intel \
-# -msse4.1 \
-# -msse4.2 \
-# -fif-conversion \
-# -fif-conversion2 \
+debug:
+	@ echo Compiling In Debugging Mode...
+	-@ $(SCRIPT_FULL_ADDRESS) compile debug
+	@ echo Done!
+
+rel:
+	@ echo Compiling In Release Mode...
+	-@ $(SCRIPT_FULL_ADDRESS) compile release
+	@ echo Done!
 
 
-LIB_INC_PATHS = -I/usr/local/include -I/usr/include
-LIB_PATHS     = -L/usr/local/lib
+recdbg:
+	@ echo Recording Compiler Output for clangd-compile_commands_debug.json generation...
+	-@ $(SCRIPT_FULL_ADDRESS) record debug
+	@ echo Done!
+
+recrel:
+	@ echo Recording Compiler Output for clangd-compile_commands_release.json generation...
+	-@ $(SCRIPT_FULL_ADDRESS) record release
+	@ echo Done!
 
 
-LIB_FILES = -lglfw
+cleandbg:
+# echo $(SCRIPT_FULL_ADDRESS)
+	@ echo Cleaning Compiled Debug Files...
+	-@ $(SCRIPT_FULL_ADDRESS) clean debug
+	@ echo Done!
+
+cleanrel:
+	@ echo Cleaning Compiled Release Files...
+	-@ $(SCRIPT_FULL_ADDRESS) clean release
+	@ echo Done!
 
 
-LDFLAGS = \
-		$(LIB_FILES) \
-		-static-libgcc \
-		-static-libstdc++ \
-		-lGL \
-		-lXinerama \
-		-lXcursor \
-		-lrt \
-		-lm \
-		-ldl \
-		-lXi \
-		-lX11 \
-		-lpthread \
-		-lxcb \
-		-lXau \
-		-lXdmcp \
-		-lXxf86vm \
-		-lXrandr \
-
-
-BUILDDIR  := build
-LIBDIR    := deps
-ASSETDIR  := assets
-
-SRCDIR    := src
-OBJDIR    := $(BUILDDIR)/obj
-OUTPUTDIR := $(BUILDDIR)/bin
-
-
-
-rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
-
-
-CSRC    = $(call rwildcard,$(SRCDIR),*.c)
-CPPSRC += $(call rwildcard,$(SRCDIR),*.cpp)
-ASMSRC  = $(call rwildcard,$(SRCDIR),*.asm)
-
-
-OBJS  = $(patsubst $(SRCDIR)/%.asm,$(OBJDIR)/%_asm.o,$(ASMSRC))
-OBJS += $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%_c.o,$(CSRC))
-OBJS += $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%_cpp.o,$(CPPSRC))
+cleanall: cleandbg
+cleanall: cleanrel
 
 
 
 
-# Compile All C, C++, ASM Files that are part of the source directory
-$(OBJDIR)/%_asm.o: $(SRCDIR)/%.asm
-	@ echo compiling ASM File $^ ...
-	@ mkdir -p $(@D)
-	$(ASMC) $(ASMFLAGS) $^ -o $@
+rundbg:
+	@ echo Running Debug Executable...
+	-@ $(SCRIPT_FULL_ADDRESS) run debug
+	@ echo Done!
 
-
-$(OBJDIR)/%_c.o: $(SRCDIR)/%.c
-	@ echo compiling C File $^ ...
-	@ mkdir -p $(@D)
-	$(CPPC) -std=$(CVERSION) $(CXXFLAGS) $(LIB_INC_PATHS) $^ -o $@ 
-
-
-
-$(OBJDIR)/%_cpp.o: $(SRCDIR)/%.cpp
-	@ echo compiling CPP File $^ ...
-	@ mkdir -p $(@D)
-	$(CPPC) -std=$(CXXVERSION) $(CXXFLAGS) $(LIB_INC_PATHS) $^ -o $@
+runrel:
+	@ echo Running Release Executable...
+	-@ $(SCRIPT_FULL_ADDRESS) run release
+	@ echo Done!
 
 
 
 
-link:
-	@ echo Linking ...
-	$(CPPC) $(LIB_PATHS) $(OBJS) -o $(OUTPUTDIR)/$(TARGET) $(LDFLAGS) 
-
-# $(CPPC) -o $(OUTPUTDIR)/$(TARGET) $(LIB_PATHS) $(LDFLAGS) $(OBJS)
-# $(CPPC) $(LIB_PATHS) $(LDFLAGS) -o $(OUTPUTDIR)/$(TARGET) $(OBJS)
-
-
-
-
-
-bld: $(OBJS) link
-
-
-rel: CXXFLAGS += -O3
-rel: bld
-
-debug: CXXFLAGS +=-g -O1 -D _DEBUG
-debug: bld
-
-
-nocons: LDFLAGS += -mwindows
-nocons: rel
-
-
-# Don't Forget to Pipe the Output to a text file! (==> make debug_compile &> debug_out.txt)
-debug_compile: CXXFLAGS += --verbose -pipe
-debug_compile: rel
-
-
-profile: CXXFLAGS +=-pg -fprofile-arcs -ftest-coverage
-profile: LDFLAGS +=-pg -g -fprofile-arcs -ftest-coverage
-profile: debug
-
-
-
-
-clean:
-	@ echo -n Deleting Compiled Files ...
-	-@ rm -r $(OBJDIR)/* > /dev/null || true
-	@ echo  Done!
-
-
-cleanbin:
-	@ echo -n Deleting Project Executable ...
-	-@ rm -r $(OUTPUTDIR)/$(TARGET) > /dev/null || true
-	@ echo  Done!
-
-
-cleanall: cleanshaders clean
-
-
-cleanprof: allclean
-cleanprof: 
-	@ echo -n Deleting gcc Profile Data...
-	-@ rm -r gmon.out > /dev/null || true
-	@ echo -n Done!
-
-
-run:
-	@ echo Running Compiled Executable ...
-	./$(OUTPUTDIR)/$(TARGET)
-
-info:
-	@ echo -e "File List: $(ASMSRC) $(CSRC) $(CPPSRC)\nObject List: $(OBJS)\n"
+setup:
+	mkdir -p assets
+	mkdir -p src
+	mkdir -p build
+	mkdir -p build/debug
+	mkdir -p build/debug/bin
+	mkdir -p build/debug/obj
+	mkdir -p build/release
+	mkdir -p build/release/bin
+	mkdir -p build/release/obj

@@ -12,6 +12,12 @@
 		* The ONLY guaranteed behaviour is copying to an uninitialized manvec, 
 		* in which the buffer will be automatically allocated to fit the request.
 		* This is done purely for performance, nothing else.
+	
+	* Copy Function NOTE:
+		bufA.copy(bufB);
+		Conditions: 
+			bufA == nullptr: bufA implicitly created then copied from bufB.
+			bufA != nullptr: (bufA.size >= bufB.size) condition MUST apply
 */
 template<typename DataType>
 class manvec 
@@ -20,6 +26,7 @@ private:
 	typedef DataType* 		iterator;
 	typedef const DataType* const_iterator;
 	
+	
 	DataType* ptr;
 	size_t    size;
 
@@ -27,9 +34,7 @@ private:
 			  size_t arraySize() 	   const { return sizeof(DataType) * size; 			  }
 
 public:
-	manvec() {
-		memset((void*)&ptr, 0x00, underlying_size());
-	}
+	manvec() : ptr(nullptr), size(0) {}
 
 	manvec(DataType* buffer, size_t length) : ptr(buffer), size(length) {}	
 	
@@ -52,13 +57,14 @@ public:
 		}
 		ptr  = (DataType*)calloc(list.size(), sizeof(DataType));
 		size = list.size();
-		memcpy((void*)ptr, (void*)list.begin(), arraySize()); /* redundant, but C++ is stupid... */
+		memcpy((void*)ptr, (void*)list.begin(), arraySize()); /* redundant copy, but C++ is stupid... */
 	}
 
 
 	~manvec() {
 		free(ptr); 
-		memset(&ptr, 0x00, underlying_size()); 
+		ptr  = nullptr;
+		size = 0;
 	}
 	
 
@@ -87,31 +93,35 @@ public:
 
 	DataType& operator[](size_t index)
 	{
-		debug(ifcrash(index >= size));
+		ifcrashdbg(index >= size);
 		return ptr[index];
 	}
 
 	const DataType& operator[](size_t index) const
 	{
-		debug(ifcrash(index >= size));
+		ifcrashdbg(index >= size);
 		return ptr[index];
 	}
 	
 
 	void copy(manvec& from)
 	{
-		size = from.size;
-		ptr  = malloc(sizeof(DataType) * size);
-		memcpy(ptr, from.ptr, arraySize());
+		if(!ptr) {
+			size = from.size;
+			ptr  = (DataType*)calloc(size, sizeof(DataType));
+		}
+		memcpy(ptr, from.ptr, from.bytes());
 		return;
 	}
 
 
 	void copy(const manvec& from)
 	{
-		size = from.size;
-		ptr  = (DataType*)malloc(sizeof(DataType) * size);
-		memcpy(ptr, from.ptr, arraySize());
+		if(!ptr) {
+			size = from.size;
+			ptr  = (DataType*)calloc(size, sizeof(DataType));
+		}
+		memcpy(ptr, from.ptr, from.bytes());
 		return;
 	}
 
@@ -120,7 +130,7 @@ public:
 	{
 		if(!ptr) {
 			size = elements;
-			ptr  = (DataType*)malloc(elements * sizeof(DataType));
+			ptr  = (DataType*)calloc(elements, sizeof(DataType));
 		}
 		memcpy(ptr, raw, elements * sizeof(DataType));
 		return;
@@ -131,7 +141,7 @@ public:
 	{
 		if(!ptr) {
 			size = elements;
-			ptr  = (DataType*)malloc(elements * sizeof(DataType));
+			ptr  = (DataType*)calloc(elements, sizeof(DataType));
 		}
 		memcpy(ptr, raw, elements * sizeof(DataType));
 
@@ -145,7 +155,7 @@ public:
 			size = from.size();
 			ptr  = calloc(size, sizeof(DataType));
 		}
-		memcpy(ptr, from.data(), arraySize());
+		memcpy(ptr, from.data(), bufferSize * sizeof(DataType));
 	}
 
 
@@ -156,7 +166,7 @@ public:
 		DataType* newBuf = (DataType*)calloc(tmp, sizeof(DataType));
 
 		if(ptr) {
-			memcpy((void*)newBuf, (void*)ptr, arraySize()); 
+			memcpy((void*)newBuf, (void*)ptr, bytes()); 
 			free(ptr);
 		}
 		ptr  = newBuf;
@@ -211,8 +221,8 @@ public:
 
 	void print()
 	{
-		printf("manual Vector:\n    Begin: 0x%llX\n    Size : %llu\n    Bytes: 0x%llX\n",
-			(uint64_t)begin(),
+		printf("manual Vector:\n    Begin: 0x%llX\n    Size : %lu\n    Bytes: 0x%lX\n",
+			(void*)begin(),
 			size,
 			size * sizeof(DataType)
 		);

@@ -1,11 +1,10 @@
 {
     "configurations": [
         {
-            "name": "Linux",
+            "name": "MinGW",
             "includePath": [
-                "/usr/local/include",
-                "/usr/lib/gcc/x86_64-linux-gnu/9/include",
-                "/usr/include/x86_64-linux-gnu",
+                "/usr/x86_64-w64-mingw32/sys-root/mingw/include",
+                "/home/themc/mglw/src/include",
                 "${workspaceFolder}/assets/**"
             ],
             "defines": [
@@ -14,11 +13,12 @@
                 "_UNICODE"
             ],
             "windowsSdkVersion": "10.0.18362.0",
-            "compilerPath": "/usr/bin/g++",
+            "compilerPath": "/usr/bin/x86_64-w64-mingw32-g++",
             "cStandard": "c11",
-            "cppStandard": "c++20",
+            "cppStandard": "c++17",
             "intelliSenseMode": "linux-gcc-x64"
         }
     ],
+    
     "version": 4
 }

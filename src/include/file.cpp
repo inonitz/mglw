@@ -1,4 +1,5 @@
 #include "file.hpp"
+#include <filesystem>
 
 
 bool loadFile(
@@ -7,6 +8,7 @@ bool loadFile(
 	char*		out   /* Where to place the file contents (Buffer of Min-Size 'size')      */
 ) {
 	namespace fs = std::filesystem;
+	printf("loadFile() => Path is %s\n", path);
 	ifcrash(!fs::exists(path));
 
 	FILE*  file;
@@ -23,13 +25,13 @@ bool loadFile(
 	fsize = fread(out, sizeof(u8), *size, file);
 	ifcrashdo(fsize != *size, {
 		fclose(file); 
-		printf("Something went wrong - file size is %lu bytes, read only %lu bytes\n", *size, fsize);
+		printf("Something went wrong - file size is %llu bytes, read only %llu bytes\n", *size, fsize);
 	});
 
 
 	fsize = fclose(file);
 	ifcrashdo(fsize, {
-		printf("Couldn't close file handle. ERROR CODE: %lu\n", fsize);
+		printf("Couldn't close file handle. ERROR CODE: %llu\n", fsize);
 	});
 	return true;
 }

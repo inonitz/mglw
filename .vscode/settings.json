@@ -90,7 +90,8 @@
         "variant": "cpp",
         "*.ipp": "cpp",
         "csignal": "cpp",
-        "any": "cpp"
+        "any": "cpp",
+        "future": "cpp"
     },
     
     "files.exclude": {
@@ -105,8 +106,16 @@
         "${workspaceFolder}/src/include/glad": true,
         "${workspaceFolder}/src/include/imgui185": true
     },
-    "editor.fontSize": 15,
+    "editor.fontSize": 14,
     "window.zoomLevel": 0,
     "C_Cpp.enhancedColorization": "Enabled",
-    "C_Cpp.errorSquiggles": "Enabled"
+    "C_Cpp.errorSquiggles": "Enabled",
+    "clangd.arguments": [
+        "--log=verbose",
+        // "-pretty",
+        "--background-index",
+        "--compile-commands-dir=.vscode"
+    ],
+    "clangd.fallbackFlags": [ "-std=c++17" ],
+    // "python.analysis.typeCheckingMode": "basic"
 }

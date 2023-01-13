@@ -1,6 +1,11 @@
 #pragma once
 #include "manvec.hpp"
+#include <string_view>
+#include <utility>
+#include <array>
 #include "glad/glad.h"
+
+
 
 
 enum class ShaderType {
@@ -8,6 +13,18 @@ enum class ShaderType {
 	Fragment,
 	Compute
 };
+
+
+__force_inline const char* ShaderTypeToStr(ShaderType type) 
+{
+	constexpr std::array<const char*, 3> convert = {
+		"GL_VERTEX_SHADER"  ,
+		"GL_FRAGMENT_SHADER",
+		"GL_COMPUTE_SHADER" ,
+	};
+	return convert[(u32)type];
+}
+
 
 
 
@@ -68,7 +85,13 @@ public:
 
 
 public:
-	Shader(manvec<srcMetadata> const& shaderSources);
+	Shader() : 
+		shaderID{}, 
+		progID{DEFAULT32}
+	{}
+
+	
+	void create(manvec<srcMetadata> const& shaderSources);
 	void destroy();
 
 	
@@ -84,6 +107,10 @@ public:
 		glUseProgram(progID); 
 	}
 
+	__force_inline void unbind() {
+		glUseProgram(0);
+	}
+
 	__force_inline void beginCompute(std::array<i32, 3> const& numGroup) {
 		glDispatchCompute((u32)numGroup[0], (u32)numGroup[1], (u32)numGroup[2]); 
 		
@@ -93,22 +120,8 @@ public:
 		glMemoryBarrier(bitArgs);
 	}
 
-	__force_inline void printComputeInfo() {
-		int work_grp_cnt[3];
-		glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &work_grp_cnt[0]);
-		glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, &work_grp_cnt[1]);
-		glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, &work_grp_cnt[2]);
-		printf("Maximum Work Groups Available [glDispatch Args] = <%i, %i, %i>\n", work_grp_cnt[0], work_grp_cnt[1], work_grp_cnt[2]);
 
-
-		glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &work_grp_cnt[0]);
-		glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, &work_grp_cnt[1]);
-		glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, &work_grp_cnt[2]);
-		printf("Maximum Work Group Size [In-Shader local(x, y, z)] = <%i, %i, %i>\n", work_grp_cnt[0], work_grp_cnt[1], work_grp_cnt[2]);
-	
-		glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &work_grp_cnt[0]);
-		printf("Maximum Invocations Per Work Group = %i\n", work_grp_cnt[0]);
-	}
+	void print();
 
 };
 

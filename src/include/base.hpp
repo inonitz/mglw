@@ -1,8 +1,14 @@
 #pragma once
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdexcept>
 #include <atomic>
 
+
+#ifndef aligned_alloc
+	#define aligned_alloc(align, size) _aligned_malloc(size, align)
+	#define aligned_free(ptr) _aligned_free(ptr)
+#endif
 
 
 
@@ -45,8 +51,8 @@ extern uint16_t finished;
 extern std::atomic<size_t> markflag;
 
 
-#define debug(something) { something; }
-#define debugnobr(something) something;
+#define debug(...) { __VA_ARGS__; }
+#define debugnobr(...) __VA_ARGS__;
 
 #define ifcrashmsg(condition, str, ...) \
 	if(!!(condition)) { \
@@ -84,8 +90,8 @@ extern std::atomic<size_t> markflag;
 \
 
 #else
-#define debug(something) {}
-#define debugnobr(something) {}
+#define debug(...)
+#define debugnobr(...)
 #define ifcrashmsg(condition, str, ...) {}
 #define ifcrashdbg(condition) 			{}
 #define ifcrashdo(condition, action) ifcrash(condition);
@@ -122,9 +128,9 @@ extern std::atomic<size_t> markflag;
 
 #endif
 
-
+/* align_malloc not really correct, should alloc size+alignment then return the ptr aligned */
 #define align_malloc(size, alignment) malloc(  alignment * ( (size/alignment) + boolean(size%alignment) )  )
-#define amalloc_t(type, size, align) (type*)align_malloc(size, align)
+#define amalloc_t(type, size, align) (type*)aligned_alloc(align, size)
 
 
 #define boolean(arg) !!(arg)
@@ -133,13 +139,20 @@ extern std::atomic<size_t> markflag;
 #define GB           	 (MB*MB)
 #define PAGE         	 (4 * KB)
 #define CACHE_LINE_BYTES (64ul)
-
+#define DEFAULT8         (0xAA)
+#define DEFAULT16        (0xF00D)
+#define DEFAULT32        (0xBABEBABE)
+#define DEFAULT64        (0xFACADE00FACADE00)
+#define DEFAULT128       (0xBEBC0FFEEAC1DBEB)                        
 
 #define likely(cond)    __glibc_likely  (boolean(cond))
 #define unlikely(cond)  __glibc_unlikely(boolean(cond))
 #define __hot           __attribute__((hot))
 #define __cold          __attribute__((cold))
-#define unused          __attribute__((unused))
+#ifndef __unused
+#define __unused        __attribute__((unused)) /* more appropriate for functions		    */
+#endif
+#define notused         __attribute__((unused)) /* more appropriate for function parameters */
 #define pack            __attribute__((packed))
 #define lin(size)       __attribute__((aligned(size)))
 #define alignpack(size) __attribute__((packed, aligned(size)))
