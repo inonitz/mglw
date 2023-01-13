@@ -1,5 +1,8 @@
+#pragma once
 #include "manvec.hpp"
 #include <optional>
+
+
 
 
 enum class VertexDataType {
@@ -11,34 +14,90 @@ enum class VertexDataType {
 };
 
 
-u32 vdtypeToGL(VertexDataType vdtype);
-u32 vdtypeToBytes(VertexDataType vdtype);
+u32 		vdtypeToGL   (VertexDataType vdtype);
+u32 		vdtypeToBytes(VertexDataType vdtype);
+const char* vdtypeToStr  (VertexDataType vdtype);
+
+
+
+
+struct bufMeta {
+	VertexDataType dtype;
+	u32 		   count;
+
+	size_t bytes() const { return (size_t)vdtypeToBytes(dtype) * count; }
+};
 
 
 
 
 struct VertexBuffer {
 private:
-	u32 id;
+	u32 	id;
+	bufMeta meta;
 
 public:
-	VertexBuffer(void* data, size_t bytes, u32 usage);
+	VertexBuffer() : id(DEFAULT32), meta{ (VertexDataType)DEFAULT32, DEFAULT32 } {}
+
+
+	void create(const void* data, u32 count, VertexDataType dtype, u32 usage);
 	void destroy();
 
-	__force_inline u32 glid() const { return id; }
+
+	__force_inline u32  		  glid()     const { return id;   }
+	__force_inline bufMeta const& metadata() const { return meta; }
+
+
+	__force_inline void print() const 
+	{
+		printf("VertexBuffer: (ID %u)\n\
+    Element Count: %u\n\
+    Element Type %s = %u Bytes\n\
+    Bytes (Total): %llu\n\n",
+			id, 
+			meta.count, 
+			vdtypeToStr(meta.dtype), 
+			vdtypeToBytes(meta.dtype), 
+			meta.bytes()
+		);
+		return;
+	}
 };
 
 
 struct IndexBuffer {
 private:
-	u32 id;
+	u32 	id;
+	bufMeta meta;
 
 public:
-	IndexBuffer(void* data, size_t bytes, u32 usage);
+	IndexBuffer() : id(DEFAULT32) {}
+
+
+	void create(const void* data, u32 count, VertexDataType dtype, u32 usage);
 	void destroy();
 
 
-	__force_inline u32 glid() const { return id; }
+	__force_inline u32            glid()     const { return id;   					}
+	__force_inline u32            count()    const { return meta.count;             }
+	__force_inline u32            gltype()   const { return vdtypeToGL(meta.dtype); }
+	__force_inline bufMeta const& metadata() const { return meta; 				    }
+
+
+	__force_inline void print() const 
+	{
+		printf("IndexBuffer:  (ID %u)\n\
+    Element Count: %u\n\
+    Element Type %s = %u Bytes\n\
+    Bytes (Total): %llu\n\n",
+			id, 
+			meta.count, 
+			vdtypeToStr(meta.dtype), 
+			vdtypeToBytes(meta.dtype), 
+			meta.bytes()
+		);
+		return;
+	}
 };
 
 
@@ -57,25 +116,33 @@ private:
 	};
 
 
+	struct BufferDescriptor {
+		VertexDataType dtype;
+		u32            count;
+		u32            glID;
+	};
+
+
 	#ifdef _DEBUG
-		/* Also include debug info on vb & ib. */
+		manvec<BufferDescriptor> glObjDescriptor;
 		manvec<VertexDescriptor> vbDescriptor;
 	#endif
 public:
+	VertexArray() : id(DEFAULT32) {}
+	
 
-	VertexArray(
-		VertexBuffer const&  	   	    vb,
-		std::optional<IndexBuffer> 	    ib,
-		manvec<VertexDescriptor> const& bufDesriptor
+	void create(
+		std::optional<VertexBuffer> const& vb,
+		std::optional<IndexBuffer>  const& ib,
+		manvec<VertexDescriptor>    const& bufDesriptor
 	);
-	
-	
 	void destroy();
 
 
-	void debugInfo();
 	void bind();
 	void unbind();
 
+
 	__force_inline u32 glid() { return id; }
+	void print();
 };

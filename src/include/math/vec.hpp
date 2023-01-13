@@ -200,11 +200,13 @@ struct vec##aptn \
     __force_inline 		 Vector<dtype, len>& operator+(vec##aptn const& b) 		 { add(mem, b.mem, temporaryBufferVec##aptn); return temporaryBufferVec##aptn;  } \
     __force_inline 		 Vector<dtype, len>& operator-(vec##aptn const& b) 		 { sub(mem, b.mem, temporaryBufferVec##aptn); return temporaryBufferVec##aptn;  } \
     __force_inline 		 Vector<dtype, len>& operator*(vec##aptn const& b) 		 { mul(mem, b.mem, temporaryBufferVec##aptn); return temporaryBufferVec##aptn;  } \
-    __force_inline 		 Vector<dtype, len>& operator*(dtype            a) 		 { mul(mem, a,     temporaryBufferVec##aptn); return temporaryBufferVec##aptn;  } \
+    __force_inline 		 Vector<dtype, len>& operator/(vec##aptn const& b) 		 { div(mem, b.mem, temporaryBufferVec##aptn); return temporaryBufferVec##aptn;  } \
+	__force_inline 		 Vector<dtype, len>& operator*(dtype            a) 		 { mul(mem, a,     temporaryBufferVec##aptn); return temporaryBufferVec##aptn;  } \
     __force_inline 		 Vector<dtype, len>& operator/(dtype            a) 		 { div(mem, a,     temporaryBufferVec##aptn); return temporaryBufferVec##aptn;  } \
     __force_inline const Vector<dtype, len>& operator+(vec##aptn const& b) const { add(mem, b.mem, temporaryBufferVec##aptn); return temporaryBufferVec##aptn;  } \
 	__force_inline const Vector<dtype, len>& operator-(vec##aptn const& b) const { sub(mem, b.mem, temporaryBufferVec##aptn); return temporaryBufferVec##aptn;  } \
 	__force_inline const Vector<dtype, len>& operator*(vec##aptn const& b) const { mul(mem, b.mem, temporaryBufferVec##aptn); return temporaryBufferVec##aptn;  } \
+	__force_inline 		 Vector<dtype, len>& operator/(vec##aptn const& b) const { div(mem, b.mem, temporaryBufferVec##aptn); return temporaryBufferVec##aptn;  } \
 	__force_inline const Vector<dtype, len>& operator*(dtype     const  a) const { mul(mem, a,     temporaryBufferVec##aptn); return temporaryBufferVec##aptn;  } \
 	__force_inline const Vector<dtype, len>& operator/(dtype     const  a) const { div(mem, a,     temporaryBufferVec##aptn); return temporaryBufferVec##aptn;  } \
 	__force_inline vec##aptn& operator+=(vec##aptn const& b) { add(mem, b.mem, mem); return *this;  } \
@@ -292,7 +294,8 @@ DEFINE_VECTOR_STRUCTURE_ARGS( \
 	{ 
 		x = a; 
 		y = b; 
-		z = c; 
+		z = c;
+		homogenised.w = 1.0f;
 		return; 
 	},
 	"vec3f %p: ( %.05f, %.05f, %.05f )\n", (void*)begin(), x, y, z
@@ -396,103 +399,42 @@ struct mat4f
 __force_inline mat4f::underlying_buffer& operator*(float a, mat4f const& b) { mul(b.mem, a, temporaryBufferMat4f); return temporaryBufferMat4f; }
 
 
-
-void MultiplyMat4Vec4(vec4f& a, mat4f& b, vec4f& out) {
-	out.x = dot(a, b.column(0));
-	out.y = dot(a, b.column(1));
-	out.z = dot(a, b.column(2));
-	out.w = dot(a, b.column(3));
-}
+void MultiplyMat4Vec4(vec4f& a, mat4f& b, vec4f& out);
+void MultiplyMat4Mat4(mat4f& a, mat4f& b, mat4f& out);
 
 
-void MultiplyMat4Mat4(mat4f& a, mat4f& b, mat4f& out) {
-	mat4f fetch_btransposed = {
-		b.column(0),
-		b.column(1),
-		b.column(2),
-		b.column(3)
-	};
-	vec4f tmp0{};
-	for(size_t i = 0; i < 4; ++i) {
-		tmp0.x = dot(a[i], fetch_btransposed[0]);
-		tmp0.y = dot(a[i], fetch_btransposed[1]);
-		tmp0.z = dot(a[i], fetch_btransposed[2]);
-		tmp0.w = dot(a[i], fetch_btransposed[3]);
-		out[i] = tmp0;
+void identity  (					    mat4f& out);
+void translate (vec3f const& translate, mat4f& out);
+void scale     (vec3f const& scale,     mat4f& out);
+void transposed(mat4f const& in, 		mat4f& out);
+void transpose (					  mat4f& inout);
+
+
+/* 
+	Explanation & Derivation:
+	https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/opengl-perspective-projection-matrix
+*/
+void perspective(
+	float  aspectRatio, 
+	float  fovy, 
+	float  near, 
+	float  far, 
+	mat4f& out
+);
+
+
+/* 
+	Calculated formula using 4x4 inverse formula + some regex + python str replace:
+	where m%d%d = projection matrix with %d as subscripts (indices).
+	{
+		1/m00,   0,     0,          0,
+		0,     1/m11,   0,          0,
+		0,       0,     0,        1/m32,
+		0,       0,   1/m23, -m22/(m23 * m32)
 	}
-	return;
-}
+*/
+void inv_perspective(mat4f const& in, mat4f& out);
 
-
-static void identity(mat4f& out) {
-	out.mem.zero();
-	out[0 ] = 1.0f;
-	out[5 ] = 1.0f;
-	out[10] = 1.0f;
-	out[15] = 1.0f;
-	return;
-}
-
-
-static void translate(vec3f const& translate, mat4f& out) {
-	out.mem.zero();
-	out[3] = translate.homogenised;
-	out[3].w = 1.0f;
-	return;
-}
-
-
-static void scale(vec3f const& scale, mat4f& out) {
-	out.mem.zero();
-	out[0 ] = scale.x;
-	out[5 ] = scale.y;
-	out[10] = scale.z;
-	out[15] = 1.0f;
-	return;
-}
-
-
-static void transposed(mat4f const& in, mat4f& out) {
-	for(size_t i = 0; i < 4; ++i) {
-		out(i, 0) = in(0, i);
-		out(i, 1) = in(1, i);
-		out(i, 2) = in(2, i);
-		out(i, 3) = in(3, i);
-	}
-}
-
-
-static void transpose(mat4f& inout) {
-	mat4f tmp = inout;
-	for(size_t i = 0; i < 4; ++i) {
-		inout(i, 0) = tmp(0, i);
-		inout(i, 1) = tmp(1, i);
-		inout(i, 2) = tmp(2, i);
-		inout(i, 3) = tmp(3, i);
-	}
-	return;
-}
-
-
-static void perspective(float fovy, float aspectRatio, float near, float far, mat4f& out) {
-	/* Explanation from Scratchapixel/lessons/3d-basic-rendering/perspective-...*/
-	float t, r, nmf;
-	aspectRatio = 1.0f / aspectRatio;
-
-
-	t    = 1.0f / std::tan(fovy * 0.5f);
-	r    = t * aspectRatio;
-	nmf  = 1.0f / (near - far);
-	fovy = 2.0f * far * near;
-
-	out.mem.zero();
-	out.mem[ 0] = r;
-	out.mem[ 5] = t;
-	out.mem[10] = (far + near) * nmf;
-	out.mem[11] = -1.0f;
-	out.mem[14] = fovy * nmf;
-	return;
-}
 
 
 /* 
@@ -509,62 +451,45 @@ static void perspective(float fovy, float aspectRatio, float near, float far, ma
 		==> X^-1 = (R * T)^-1 = T^-1 * R^-1
 		<==> View_Matrix = T^-1 * R^-1 = translate(-eyePos) * BasisVectorMatrix (RotateXYZ, ...)
 	This link will help - https://stackoverflow.com/questions/349050/calculating-a-lookat-matrix?noredirect=1&lq=1
-	NOTE: The Matrix is left Handed (At - eye instead of eye - At), but the math is the same.
-*/
-static void lookAt(
-	vec3f const& eyePos, 
-	vec3f const& at, 
-	vec3f const& up,
-	mat4f& 		 out
-) {
-	vec3f forward, right, newup, trans;
-
-	/* (at - eye).div(|(eye-at)|) */
-	forward  = eyePos; 
-	forward -= at; 
-	forward.normalize();
-
-	/* camera_view_dir x up_basis_vector = right_basis_vector */
-	right = cross(up, forward); 
-	right.normalize();
-
-	/* right_basis_vector(x_axis) x forward_basis_vector(z_axis) = up_basis_vector(y_axis) */
-	newup = cross(forward, right);
-
-
-	/* Set View Matrix Basis Vectors */
-	out[0] = right.homogenised;
-	out[1] = newup.homogenised;
-	out[2] = forward.homogenised;
-	/* Set The Translation Vector to (-eyePos, 1.0f)*/
-	trans  = -1.0f * eyePos;
-
-	out[3].x = dot(right,   trans);
-	out[3].y = dot(newup,   trans);
-	out[3].z = dot(forward, trans); 
-	out[3].w = 1.0f;
-
-	debug({
-		printf("+X    "); right.homogenised.print();
-		printf("+Y    "); newup.homogenised.print();
-		printf("+Z    "); forward.homogenised.print();
-		printf("-P    "); trans.homogenised.print();
-		printf("-P_mat"); out[3].print();
-	});
-
-	transpose(out);
-
-
-	/* Resulting View Matrix (World->Camera):
+	NOTE ABOUT LINK CONTENTS: The Matrix is left Handed (At - eye instead of eye - At), but the math is the same.
+	
+	Resulting View Matrix (World->Camera):
 		where xAxis = right, yAxis = newup, zAxis = forward
 		[         xaxis.x          yaxis.x          zaxis.x  0 ]
 		[         xaxis.y          yaxis.y          zaxis.y  0 ]
 		[         xaxis.z          yaxis.z          zaxis.z  0 ]
 		[ dot(xaxis,-eye)  dot(yaxis,-eye)  dot(zaxis,-eye)  1 ]
-	*/
-	return;
-}
+*/
+void lookAt(
+	vec3f const& eyePos, 
+	vec3f const& at, 
+	vec3f const& up,
+	mat4f& 		 out
+);
 
+
+/* 
+	Inverse of a homogenous transform matrix (V) =
+		[ xaxis.x  xaxis.y  xaxis.z  eye.x ]
+		[ yaxis.x  yaxis.y  yaxis.z  eye.y ]
+		[ zaxis.x  zaxis.y  zaxis.z  eye.z ]
+		[    0 	      0 	   0       1   ]
+*/
+void inv_lookAt(
+	vec3f const& eyePos, 
+	vec3f const& at, 
+	vec3f const& up,
+	mat4f& 		 out
+);
+
+
+/* 
+	Source Code: https://github.com/willnode/N-Matrix-Programmer/blob/master/Info/Matrix_4x4.txt
+*/
+void inverse(
+	mat4f const& in,
+	mat4f&       out
+);
 
 #pragma GCC diagnostic pop
 

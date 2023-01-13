@@ -635,6 +635,9 @@
         Too many extensions
 */
 
+
+_Pragma("GCC diagnostic push")
+_Pragma("GCC diagnostic ignored \"-Wpedantic\"")
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9402,3 +9405,5 @@ int gladLoadGLLoader(GLADloadproc load) {
 	return GLVersion.major != 0 || GLVersion.minor != 0;
 }
 
+
+_Pragma("GCC diagnostic pop")

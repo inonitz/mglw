@@ -1,0 +1,200 @@
+PROJNAME = Project
+TARGET   = $(PROJNAME).exe
+CPPC  	 = x86_64-w64-mingw32-g++
+CC       = x86_64-w64-mingw32-gcc
+ASMC 	 = as
+ASMFLAGS = -O0
+CXXFLAGS =  -c \
+			-pedantic \
+			-Wall \
+			-Wextra \
+			-march=native \
+			-msse4.1 \
+			-msse4.2 \
+			-mavx \
+			-mavx2 \
+
+
+CVERSION   = c11
+CXXVERSION = c++17
+
+
+
+
+# -pedantic \
+# -Werror \
+# -Wno-missing-braces \
+# -Wno-missing-field-initializers \
+# -Wno-unused-function \
+# -Wno-unused-variable \
+# -masm=intel \
+# -msse4.1 \
+# -msse4.2 \
+# -fif-conversion \
+# -fif-conversion2 \
+
+# -I/home/themc/mglw/src/include/GLFW
+# LIB_INC_PATHS = -I/usr/x86_64-w64-mingw32/sys-root/mingw/include -I/home/themc/mglw/src/include
+# LIB_PATHS     = -L/lib -L/lib/gcc/x86_64-w64-mingw32 -L/home/themc/mglw/lib/GLFW
+# -I/usr/lib/gcc/x86_64-w64-mingw32/11/include \
+# -L/usr/lib/gcc/x86_64-w64-mingw32/11 \
+
+# -L/usr/lib
+
+LIB_INC_PATHS = -I/usr/x86_64-w64-mingw32/sys-root/mingw/include -I/home/themc/mglw/src/include
+LIB_PATHS     = -L/usr/x86_64-w64-mingw32/sys-root/mingw/lib -L/home/themc/mglw/lib/GLFW
+LIB_FILES     = -lglfw3dll
+
+
+LDFLAGS = \
+		$(LIB_FILES) \
+		-static-libgcc \
+		-static-libstdc++ \
+		-lopengl32 \
+		-lm \
+		-lpthread \
+
+
+#		-lXinerama \
+#		-lXcursor \
+#		-lrt \
+#		-ldl \
+#		-lXi \
+#		-lX11 \
+# 		-lXxf86vm \
+#		-lxcb \
+#		-lXau \
+#		-lXdmcp \
+#		-lXrandr \
+
+
+
+
+BUILDDIR_BASE 	   :=build
+APPEND_RELEASE_DIR :=release
+APPEND_DEBUG_DIR   :=debug
+BUILDDIR 		   :=$(BUILDDIR_BASE)/
+
+
+
+
+ifndef DEBUG
+$(error DEBUG variable isn't defined. Can't proceed with build process)
+else
+$(info [DEBUG='$(DEBUG)'] DEBUG    Variable defined		   )
+$(info [DEBUG='$(DEBUG)'] BUILDDIR Variable ["$(BUILDDIR)"])
+endif
+
+
+ifeq ('$(DEBUG)' , '1')
+	BUILDDIR:=$(BUILDDIR)$(APPEND_DEBUG_DIR)
+else
+	BUILDDIR:=$(BUILDDIR)$(APPEND_RELEASE_DIR)
+endif
+$(info [DEBUG='$(DEBUG)'] BUILDDIR Variable ["$(BUILDDIR)"] )
+
+
+
+
+
+
+LIBDIR   := deps
+ASSETDIR := assets
+
+SRCDIR    := src
+OBJDIR    := $(BUILDDIR)/obj
+OUTPUTDIR := $(BUILDDIR)/bin
+
+
+
+rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
+
+
+CSRC    = $(call rwildcard,$(SRCDIR),*.c)
+CPPSRC += $(call rwildcard,$(SRCDIR),*.cpp)
+ASMSRC  = $(call rwildcard,$(SRCDIR),*.asm)
+
+
+OBJS  = $(patsubst $(SRCDIR)/%.asm,$(OBJDIR)/%_asm.o,$(ASMSRC))
+OBJS += $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%_c.o,$(CSRC))
+OBJS += $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%_cpp.o,$(CPPSRC))
+
+
+
+
+# Compile All C, C++, ASM Files that are part of the source directory
+$(OBJDIR)/%_asm.o: $(SRCDIR)/%.asm
+	@ echo compiling ASM File $^ ...
+	@ mkdir -p $(@D)
+	$(ASMC) $(ASMFLAGS) $^ -o $@
+
+
+$(OBJDIR)/%_c.o: $(SRCDIR)/%.c
+	@ echo compiling C File $^ ...
+	@ mkdir -p $(@D)
+	$(CC) -std=$(CVERSION) $(CXXFLAGS) $(LIB_INC_PATHS) $^ -o $@ 
+
+
+
+$(OBJDIR)/%_cpp.o: $(SRCDIR)/%.cpp
+	@ echo compiling CPP File $^ ...
+	@ mkdir -p $(@D)
+	$(CPPC) -std=$(CXXVERSION) $(CXXFLAGS) $(LIB_INC_PATHS) $^ -o $@
+
+
+
+
+link:
+	@ echo Linking ...
+	$(CPPC) $(LIB_PATHS) $(OBJS) -o $(OUTPUTDIR)/$(TARGET) $(LDFLAGS) 
+
+# $(CPPC) -o $(OUTPUTDIR)/$(TARGET) $(LIB_PATHS) $(LDFLAGS) $(OBJS)
+# $(CPPC) $(LIB_PATHS) $(LDFLAGS) -o $(OUTPUTDIR)/$(TARGET) $(OBJS)
+
+
+
+
+bld: $(OBJS) link
+
+
+rel_internal: CXXFLAGS += -O3 -ffast-math
+rel_internal: bld
+
+debug_internal: CXXFLAGS +=-g -O1 -D _DEBUG 
+debug_internal: bld
+
+
+# Don't Forget to Pipe the Output to a text file! (==> make debug_compile &> debug_out.txt)
+debug_compile: CXXFLAGS += --verbose -pipe
+debug_compile: rel_internal
+
+
+
+
+clean_internal:
+	@ echo -n "Deleting Compiled Files ... "  
+	-@ rm -r $(OBJDIR)/* > /dev/null || true
+	@ echo "Done! "
+
+
+cleanbin_internal:
+	@ echo -n Deleting Project Executable ...
+	-@ rm -r $(OUTPUTDIR)/$(TARGET) > /dev/null || true
+	@ echo "Done! "
+
+
+cleanall_internal: cleanbin_internal clean_internal
+
+
+
+
+run:
+	@ echo Running Compiled Executable ...
+	./$(OUTPUTDIR)/$(TARGET)
+
+info:
+	@ echo -e "File List: $(ASMSRC) $(CSRC) $(CPPSRC)\nObject List: $(OBJS)\n"
+
+
+
+.PHONY: info run cleanall cleanbin

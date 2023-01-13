@@ -4,4 +4,5 @@
 
 int main() {
 	return compute_raytrace();
+	// return compute_basic();
 }
